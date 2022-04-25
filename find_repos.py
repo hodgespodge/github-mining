@@ -10,7 +10,7 @@ from os import path
 search_term_list = ['behaviortree_ros']
 
 if not path.exists('.env'):
-    raise Exception('Please create .env file')
+    raise Exception('Please create .env file with the following content:\n\nGITHUB_TOKEN=')
 
 github_oaut_token = config('GITHUB_TOKEN')
 
