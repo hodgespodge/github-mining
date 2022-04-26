@@ -94,7 +94,7 @@ def search_repo_contents(repo, files_targets, max_file_size):
         else:
 
             file_name = file_content.path.split('/')[-1]
-            print(file_name)
+            # print(file_name)
 
             if file_content.size > max_file_size:
                 continue
@@ -104,8 +104,6 @@ def search_repo_contents(repo, files_targets, max_file_size):
 
             if file_type_found:
 
-                # print("Found file: ", file_name, " with regex: ", file_type_target)
-
                 code = str(file_content.decoded_content.decode('utf-8', 'ignore'))
                 # print(code)
 
@@ -114,7 +112,7 @@ def search_repo_contents(repo, files_targets, max_file_size):
                     # print("Checking if target: ", target, " is in file: ", file_name)
 
                     if re.search(target, code):
-                        print("Found Target!", target)
+                        print("Found Target: \"", target,"\"")
                         # print(code)
                         return True, file_name, target
 
@@ -146,60 +144,59 @@ def main():
 
     new_file = True
 
-    # may want to move this to the check_if_already_searched function
-    if already_searched:
+    if already_searched and boolean_input("Would you like to resume the search? (y/n) \n", 3):
 
-        # Ask user if they want to append to the previous search
-        if boolean_input("Previous search found. Do you want to append to the previous search? (y/n)", 3):
-            # print("Appending to previous search: ", old_file_name)
+        os.rename(previous_searches_dir + "/" + old_file_name, previous_searches_dir + "/" + new_file_name)
 
-            # rename the old file to the new file name
-            os.rename(previous_searches_dir + "/" + old_file_name, previous_searches_dir + "/" + new_file_name)
+        new_file = False
 
-            new_file = False
-
-        else:
-            # print("Writing new search to: ", new_file_name)
-            new_file = True
     else:
-        new_file
-
+        new_file = True
 
     f = None
     reader = None
     writer = None
 
     if new_file:
-        f = open(previous_searches_dir + "/" + new_file_name, 'w')
+        f = open(previous_searches_dir + "/" + new_file_name, 'w', newline='')
 
         # write the search arguments to the file
-        
         writer = csv.writer(f)
-        reader = csv.reader(f)
 
         writer.writerow(csvify(['keywords','qualifiers','files_targets','max_file_size']))
         writer.writerow(csvify([keywords, qualifiers, files_targets, max_file_size]))
         writer.writerow(csvify([]))
-        
 
         writer.writerow(csvify(csv_repo_header))
 
 
     else:
-        f = open(previous_searches_dir + "/" + new_file_name)
 
-        # read through the old file and add the repos to the checked_repos set
+        os.rename(previous_searches_dir + "/" + old_file_name, previous_searches_dir + "/" + new_file_name)
 
-        reader = csv.reader(f)
-        writer = csv.writer(f)
+        with open(previous_searches_dir + "/" + new_file_name, 'r') as f:
+                
+            reader = csv.reader(f)
 
-        # skip the first 4 rows
-        for i in range(4):
+            # skip the header
             next(reader)
 
-        for row in reader:
-            if row:
-                checked_repos.add(row[0]) # full_name
+            # skip the search arguments
+            next(reader)
+
+            # skip the empty line
+            next(reader)
+
+            # skip the header
+            next(reader)
+
+            for row in reader:
+                if row:
+                    checked_repos.add(row[0]) # full_name
+
+
+        f = open(previous_searches_dir + "/" + new_file_name,'a' ,newline='')
+        writer = csv.writer(f)
 
     remaining, request_limit = g.rate_limiting
 
@@ -223,13 +220,15 @@ def main():
 
                     if repo.full_name not in checked_repos:
                         checked_repos.add(repo.full_name)
+                        print("")
                         print(repo.full_name)
-
-                    print("")
+                    else:
+                        continue
+                    # print("")
 
                     code_target_found, target_file_name, target = search_repo_contents(repo,files_targets, max_file_size)
                     
-                    writer.writerow(csvify([repo.full_name, repo.url, code_target_found, target_file_name, target]))
+                    writer.writerow(csvify([repo.full_name, repo.clone_url, code_target_found, target_file_name, target]))
 
                 remaining, request_limit = g.rate_limiting
                 print("Remaining: %s, Limit: %s" % (remaining, request_limit))
