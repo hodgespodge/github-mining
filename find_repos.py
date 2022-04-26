@@ -73,12 +73,17 @@ def check_if_already_searched(keywords, qualifiers, files_targets):
 
 def csvify(row: list):
 
-    if len(row) < csv_row_len:
+    row_len = len(row)
+    
+    if row_len > csv_row_len:
+            raise Exception("Row is too long.")
+
+    if row_len < csv_row_len:
         row.extend([''] * (csv_row_len - len(row)))
 
     return row
 
-def search_repo_contents(repo):
+def search_repo_contents(repo, files_targets, max_file_size):
 
     contents = repo.get_contents("")
 
@@ -91,17 +96,27 @@ def search_repo_contents(repo):
             file_name = file_content.path.split('/')[-1]
             print(file_name)
 
+            if file_content.size > max_file_size:
+                continue
+
             # check if file is in files_targets (with regex)
-            file_type_found , target = regex_file_name(file_name, files_targets.keys()) 
+            file_type_found , file_type_target = regex_file_name(file_name, files_targets.keys()) 
 
             if file_type_found:
 
-                print("Found file: ", file_name, " in target: ", target)
+                # print("Found file: ", file_name, " with regex: ", file_type_target)
 
-                code = file_content.decoded_content.decode('utf-8', 'ignore')
+                code = str(file_content.decoded_content.decode('utf-8', 'ignore'))
                 # print(code)
 
-                #TODO check if code contains any of the targets
+                #check if code string contains any of the targets in target using regex
+                for target in files_targets[file_type_target]:
+                    # print("Checking if target: ", target, " is in file: ", file_name)
+
+                    if re.search(target, code):
+                        print("Found Target!", target)
+                        # print(code)
+                        return True, file_name, target
 
     return False, "", ""    #code_target_found, target_file_name, target 
 
@@ -109,10 +124,8 @@ def main():
 
     keywords = ['ros','ros2']
     qualifiers = ['stars:>2', 'language:python']
-    # languages = ['Python','C++']
-    # sort = ''       #('stars', 'forks', 'updated')
-    # order = ''      #('asc', 'desc')
-    files_targets = {'.*.py':('test'), 'CMakeLists.txt':('test'), 'package.xml':('test')}
+    files_targets = {'.*.py':['import py_trees'], 'CMakeLists.txt':['test'], 'package.xml':['test']}
+    max_file_size = 100000 # in bytes 
 
     keywords.sort()
     qualifiers.sort()
@@ -164,16 +177,14 @@ def main():
         writer = csv.writer(f)
         reader = csv.reader(f)
 
-        writer.writerow(csvify(['keywords','qualifiers','files_targets']))
-        writer.writerow(csvify([keywords, qualifiers, files_targets]))
+        writer.writerow(csvify(['keywords','qualifiers','files_targets','max_file_size']))
+        writer.writerow(csvify([keywords, qualifiers, files_targets, max_file_size]))
         writer.writerow(csvify([]))
         
 
         writer.writerow(csvify(csv_repo_header))
 
-        # writer.writerow(csvify(['samuel','bingus','True', 'test.py', 'test']))
 
-        
     else:
         f = open(previous_searches_dir + "/" + new_file_name)
 
@@ -216,11 +227,9 @@ def main():
 
                     print("")
 
-                    code_target_found, target_file_name, target = search_repo_contents(repo)
-
+                    code_target_found, target_file_name, target = search_repo_contents(repo,files_targets, max_file_size)
                     
-                    writer.writerow(csvify([repo.full_name, repo.git_url, code_target_found, target_file_name, target]))
-
+                    writer.writerow(csvify([repo.full_name, repo.url, code_target_found, target_file_name, target]))
 
                 remaining, request_limit = g.rate_limiting
                 print("Remaining: %s, Limit: %s" % (remaining, request_limit))
@@ -242,8 +251,10 @@ def main():
             
         except KeyboardInterrupt:
             print("\nExiting timeout")
+            f.close()
             return False
 
+        
 
 if __name__ == '__main__':
     main()
