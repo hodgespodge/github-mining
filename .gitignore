@@ -1,3 +1,6 @@
+# previous searches are stored as csv
+.csv
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
