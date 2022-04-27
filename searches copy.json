@@ -1,30 +1,7 @@
 [
-    {
-        "name" : "pytrees with test folders",
-        "keywords": [
-            "ros",
-            "ros2"
-        ],
-        "qualifiers":[
-            "stars:>2", "language:python"
-        ],
-
-        "files_targets" : {
-            ".*.py":["import py_trees", "from py_trees"],
-            "CMakeLists.txt":["test"],
-            "package.xml":["test"]
-        },
-        
-        "dir_targets" : [
-            ".*test",
-            ".*tests"
-        ]
-        ,
-        "max_file_size" : 100000
-    },
 
     {
-        "name" : "behavior_trees",
+        "name" : "search for py_trees",
         "keywords": [
             "ros",
             "ros2"
@@ -55,7 +32,6 @@
                                     "equation" : "x1 or x2"
                                 }
                             },
-                            
 
                             "equation" : "x1 or (x2 and x3)"
                         }
