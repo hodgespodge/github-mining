@@ -16,7 +16,7 @@ results_dir = 'results'
 csv_repo_header = ['full_name','URL','target_found','target_file_name','target']
 csv_row_len = len(csv_repo_header)
 
-def regex_file_name(file_name, patterns):
+def in_regex_list(file_name, patterns):
     for pattern in patterns:
 
         match = re.search(pattern, file_name)
@@ -50,10 +50,10 @@ def boolean_input(prompt, max_trys):
     raise Exception("Too many tries.")
 
 
-def check_if_already_searched(keywords, qualifiers, files_targets):
+def check_if_already_searched(keywords, qualifiers, files_targets, dir_targets, max_file_size):
 
     # Default hash() function is randomly seeded, so we need to use a consistent one
-    args_hash = hashlib.sha1((str(sorted(keywords)) + str(sorted(qualifiers)) + str(files_targets)).encode('utf-8')).hexdigest()[:12]
+    args_hash = hashlib.sha1((str(keywords) + str(qualifiers) + str(files_targets) + str(dir_targets) + str(max_file_size)).encode('utf-8')).hexdigest()[:12]
 
     new_file_name = datetime.datetime.now().strftime("%Y-%m-%d") + "_" + str(args_hash) + ".csv"
 
@@ -83,13 +83,20 @@ def csvify(row: list):
 
     return row
 
-def search_repo_contents(repo, files_targets, max_file_size):
+def search_repo_contents(repo, files_targets, dir_targets, max_file_size):
 
     contents = repo.get_contents("")
 
     while contents:
         file_content = contents.pop(0)
         if file_content.type == "dir":
+
+            folder_name_found, folder_name_pattern = in_regex_list(file_content.name, dir_targets)
+
+            if folder_name_found:
+                return True, file_content.name, folder_name_pattern
+
+
             contents.extend(repo.get_contents(file_content.path))
         else:
 
@@ -100,7 +107,7 @@ def search_repo_contents(repo, files_targets, max_file_size):
                 continue
 
             # check if file is in files_targets (with regex)
-            file_type_found , file_type_target = regex_file_name(file_name, files_targets.keys()) 
+            file_type_found , file_type_target = in_regex_list(file_name, files_targets.keys()) 
 
             if file_type_found:
                 try:
@@ -121,23 +128,6 @@ def search_repo_contents(repo, files_targets, max_file_size):
 
 def main():
 
-    # keywords = ['ros','ros2']
-    # qualifiers = ['stars:>2', 'language:python']
-    # files_targets = {'.*.py':['import py_trees'], 'CMakeLists.txt':['test'], 'package.xml':['test']}
-    # max_file_size = 100000 # in bytes 
-
-    # searches = None
-
-    # with open('searches.json') as json_file:
-    #     searches = json.load(json_file)
-
-    # # print(searches)
-
-    # for search in searches:
-    #     print("Searching for: ", search)
-
-    # searches.append({'keywords':keywords, 'qualifiers':qualifiers, 'files_targets':files_targets, 'max_file_size':max_file_size})
-
     checked_repos = set()
 
     # get personal access token
@@ -149,7 +139,7 @@ def main():
     g = Github(login_or_token=github_oaut_token)
 
     
-
+    searches = None
     with open('searches.json') as json_file:
         searches = json.load(json_file)
 
@@ -161,44 +151,26 @@ def main():
 
         keywords = search['keywords']
         qualifiers = search['qualifiers']
+        dir_targets = search['dir_targets']
         files_targets = search['files_targets']
         max_file_size = search['max_file_size']
 
-        keywords.sort()
-        qualifiers.sort()
 
+        # sort the args so that hashing is consistent
+        keywords.sort() 
+        qualifiers.sort()
+        dir_targets.sort()
+        for target in files_targets.values():
+            target.sort()
 
         # check if we already searched for this combination of keywords and qualifiers
-        already_searched, old_file_name, new_file_name = check_if_already_searched(keywords, qualifiers, files_targets)
-
-        new_file = True
-
-        if already_searched and boolean_input("Would you like to resume the search? (y/n) \n", 3):
-
-            os.rename(results_dir + "/" + old_file_name, results_dir + "/" + new_file_name)
-
-            new_file = False
-
-        else:
-            new_file = True
+        already_searched, old_file_name, new_file_name = check_if_already_searched(keywords, qualifiers, files_targets, dir_targets, max_file_size)
 
         f = None
         reader = None
         writer = None
 
-        if new_file:
-            f = open(results_dir + "/" + new_file_name, 'w', newline='')
-
-            # write the search arguments to the file
-            writer = csv.writer(f)
-
-            writer.writerow(csvify(['keywords','qualifiers','files_targets','max_file_size']))
-            writer.writerow(csvify([keywords, qualifiers, files_targets, max_file_size]))
-            writer.writerow(csvify([]))
-
-            writer.writerow(csvify(csv_repo_header))
-
-        else:
+        if already_searched and boolean_input("Would you like to resume the search? (y/n) \n", 3):
 
             os.rename(results_dir + "/" + old_file_name, results_dir + "/" + new_file_name)
 
@@ -222,20 +194,28 @@ def main():
                     if row:
                         checked_repos.add(row[0]) # full_name
 
+            f = open(results_dir + "/" + new_file_name, 'a')
+            writer = csv.writer(f)
+
+        else:
+            f = open(results_dir + "/" + new_file_name, 'w', newline='')
+
+            # write the search arguments to the file
+            writer = csv.writer(f)
+
+            writer.writerow(csvify(['keywords','qualifiers','files_targets','max_file_size']))
+            writer.writerow(csvify([keywords, qualifiers, files_targets, max_file_size]))
+            writer.writerow(csvify([]))
+
+            writer.writerow(csvify(csv_repo_header))
             f = open(results_dir + "/" + new_file_name,'a' ,newline='')
             writer = csv.writer(f)
 
-        remaining, request_limit = g.rate_limiting
-
-        print("Remaining: %s, Limit: %s" % (remaining, request_limit))
-
         query = ' '.join(keywords) + ' ' + ' '.join(qualifiers)
-
-        print(query)
-
+        print("querying:",query)
 
         repos = g.search_repositories(query=query)
-
+        
         repos = list(repos)
         print("Found %s repos" % len(repos))
 
@@ -244,7 +224,8 @@ def main():
             for repo in repos:  
 
                 remaining, request_limit = g.rate_limiting
-                # print("Remaining: %s, Limit: %s" % (remaining, request_limit))
+
+                print("Remaining: %s, Limit: %s" % (remaining, request_limit))
 
                 if remaining < 500:
 
@@ -260,7 +241,7 @@ def main():
                 else:
                     continue
 
-                code_target_found, target_file_name, target = search_repo_contents(repo,files_targets, max_file_size)
+                code_target_found, target_file_name, target = search_repo_contents(repo,files_targets,dir_targets, max_file_size)
                 writer.writerow(csvify([repo.full_name, repo.clone_url, code_target_found, target_file_name, target]))
             
         except KeyboardInterrupt:
