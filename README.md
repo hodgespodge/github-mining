@@ -11,3 +11,6 @@
 4. install python dependencies: `pip3 install -r requirements.txt`
 
 ### Usage
+
+TODO: is it worth trying to encode boolean login into the search?
+I.E. target A AND target B OR target C
