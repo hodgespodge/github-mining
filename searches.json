@@ -38,9 +38,9 @@
                 "equation" : "(x1 or x2) and x3"
                 
             },
-            "x3": "asd",
+            "x3": ".*",
             
-            "equation" : "(not x1 or x2) and x3"
+            "equation" : "(not x1 or ~x2) and x3"
         }
     
         

@@ -1,45 +1,49 @@
-from github import Repository
+from github import Repository, ContentFile
 
 import json
 import sympy as sy
+import copy
+from regex_functions import in_regex, in_regex_list
 
 class repo_evaluator:
 
-    def get_expr_arg_set(self, expr : sy.Expr):
+    def get_expr_arg_dict(self, expr : sy.Expr):
 
-        def _add_expr_args_to_set(expr : sy.Expr , unique_args : set):
+        def _add_expr_args_to_dict(expr : sy.Expr , unique_args : dict):
                 if len(expr.args) == 0:
-                    unique_args.add(expr)
+                    unique_args[expr] = None
                 else:
                     for arg in expr.args:
-                        _add_expr_args_to_set(arg, unique_args)
+                        _add_expr_args_to_dict(arg, unique_args)
 
-        unique_args = set()
-        _add_expr_args_to_set(expr, unique_args)
+        unique_args = {}
+        _add_expr_args_to_dict(expr, unique_args)
         return unique_args
 
-    def check_args_exist_in_dict(self, args : set, target : dict):
+    def check_args_exist_in_dict(self, args : dict, target : dict):
 
-        for arg in args:
+        for arg in args.keys():
             if not target.get(str(arg), False) or target[str(arg)] == None:
-                raise Exception("Equation \"" + str(target['equation']) +  "\" contains an argument that is not in the search description: " + str(arg))
+                raise Exception("Equation \"" + str(target['equation']) +  "\" contains an argument that is not defined in the search description: " + str(arg))
                 
     def clean_equation(self, equation : str):
         equation = equation.replace('and', '&').replace('or', '|').replace('not', '~').replace('!', '~')
         equation = sy.parsing.sympy_parser.parse_expr(equation, evaluate=False)
         equation = sy.to_dnf(equation, simplify=True)
+        print(type(type(equation)))
+
         return equation
 
     def __init_code_targets(self, code_targets : dict):
 
         code_targets['equation'] = self.clean_equation(code_targets['equation'])
-        code_targets['code_args'] = self.get_expr_arg_set(code_targets['equation'])
+        code_targets['args'] = self.get_expr_arg_dict(code_targets['equation'])
 
         print("Code equation: " + str(code_targets['equation']))
 
-        self.check_args_exist_in_dict(code_targets['code_args'], code_targets)
+        self.check_args_exist_in_dict(code_targets['args'], code_targets)
 
-        for target in code_targets['code_args']:
+        for target in code_targets['args']:
             if type(target) == dict:
                 raise Exception("Cannot have another target type inside a code target")
 
@@ -48,13 +52,13 @@ class repo_evaluator:
     def __init_file_targets(self, file_targets : dict):
             
         file_targets['equation'] = self.clean_equation(file_targets['equation'])
-        file_targets['file_args'] = self.get_expr_arg_set(file_targets['equation'])
+        file_targets['args'] = self.get_expr_arg_dict(file_targets['equation'])
 
         print("File equation: " + str(file_targets['equation']))
 
-        self.check_args_exist_in_dict(file_targets['file_args'], file_targets)
+        self.check_args_exist_in_dict(file_targets['args'], file_targets)
 
-        for arg in file_targets['file_args']:
+        for arg in file_targets['args']:
             target = file_targets[str(arg)]
             if type(target) == dict:
                 target_type = target.get('target_type', None)
@@ -77,13 +81,13 @@ class repo_evaluator:
     def __init_dir_targets(self, dir_targets: dict):
 
         dir_targets['equation'] = self.clean_equation(dir_targets['equation'])
-        dir_targets['dir_args'] = self.get_expr_arg_set(dir_targets['equation'])
+        dir_targets['args'] = self.get_expr_arg_dict(dir_targets['equation'])
 
         print("Dir equation: " + str(dir_targets['equation']))
 
-        self.check_args_exist_in_dict(dir_targets['dir_args'], dir_targets)
+        self.check_args_exist_in_dict(dir_targets['args'], dir_targets)
 
-        for arg in dir_targets['dir_args']:
+        for arg in dir_targets['args']:
             target = dir_targets[str(arg)]
             if type(target) == dict:
                 target_type = target.get('target_type', None)
@@ -106,13 +110,13 @@ class repo_evaluator:
     def __init_repo_targets(self, repo_targets : dict):
 
         repo_targets['equation'] = self.clean_equation(repo_targets['equation'])
-        repo_targets['repo_args'] = self.get_expr_arg_set(repo_targets['equation'])
+        repo_targets['args'] = self.get_expr_arg_dict(repo_targets['equation'])
 
         print("Repo equation: " + str(repo_targets['equation']))
 
-        self.check_args_exist_in_dict(repo_targets['repo_args'], repo_targets)
+        self.check_args_exist_in_dict(repo_targets['args'], repo_targets)
 
-        for arg in repo_targets['repo_args']:
+        for arg in repo_targets['args']:
             target = repo_targets[str(arg)]
             if type(target) == dict:
 
@@ -168,23 +172,127 @@ class repo_evaluator:
 
         self.targets = self.__init_targets(self.targets)
 
-        
-    def eval_repo(self,repo : Repository.Repository):
+        print("Targets: " + str(self.targets))
 
-        if self.repo_target == None: # no target specified
+    def evaluate_equation(self, equation: sy.Expr, args: dict):
+        print("evaluating equation: " + str(equation))
+        print("args: " + str(args))
+        equation_result = equation.subs(args)
+        print("equation result: " + str(equation_result))
+
+        if type(equation_result) == bool:
+            return equation_result
+        else:
+            print("")
+
+    def eval_repo_targets(self, repo : Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
+
+        repo_args = targets['args']
+
+        for arg in repo_args.keys():
+
+            arg_regex = targets[str(arg)]
+
+            if type(arg_regex) == str: # else it's a dict
+                repo_args[arg] = in_regex( arg_regex, repo.name)
+
+        equation_result = self.evaluate_equation(targets['equation'], repo_args)
+
+        # print(equation_result)
+
+        return equation_result
+
+
+    def eval_repository(self,repo : Repository.Repository):
+
+        if self.targets == None: # no target specified
             return True
 
-        
+        targets = copy.deepcopy(self.targets)
+
+        contents = repo.get_contents("")
+
+        if targets['target_type'] == "repo":
+            return self.eval_repo_targets(repo, contents, targets)
+        elif targets['target_type'] == "dir":
+            return self.eval_dir_targets(repo, contents, targets)
+        elif targets['target_type'] == "file":
+            return self.eval_file_targets(repo, contents, targets)
+        elif targets['target_type'] == "code":
+            return self.eval_code_targets(repo, contents, targets)
+        else:
+            raise Exception("Target type not recognized: " + targets["target_type"])
+
+        # while contents:
+        #     file_content = contents.pop(0)
+        #     if file_content.type == "dir":
+
+        #         folder_name_found, folder_name_pattern = in_regex_list(file_content.name, dir_targets)
+
+        #         if folder_name_found:
+        #             return True, file_content.name, folder_name_pattern
+
+
+        #         contents.extend(repo.get_contents(file_content.path))
+        #     else:
+
+        #         file_name = file_content.path.split('/')[-1]
+        #         # print(file_name)
+
+        #         if file_content.size > max_file_size:
+        #             continue
+
+        #         # check if file is in files_targets (with regex)
+        #         file_type_found , file_type_target = in_regex_list(file_name, files_targets.keys()) 
+
+        #         if file_type_found:
+        #             try:
+        #                 code = str(file_content.decoded_content.decode('utf-8', 'ignore'))
+                        
+        #                 #check if code string contains any of the targets in target using regex
+        #                 for target in files_targets[file_type_target]:
+        #                     # print("Checking if target: ", target, " is in file: ", file_name)
+
+        #                     if re.search(target, code):
+        #                         print("Found Target: \"", target,"\"")
+        #                         # print(code)
+        #                         return True, file_name, target
+        #             except AssertionError:
+        #                 print("Error decoding file: ", file_content.path)
+                    
+        # return False, "", ""    #code_target_found, target_file_name, target 
+
+
 
     
 def main():
+
+    import os
+    from github import Github
+    from decouple import config   
 
     with open('searches.json') as json_file:
         searches = json.load(json_file)
 
     searcher = repo_evaluator(searches[0])
 
+    # get personal access token
+    if not os.path.exists('.env'):
+        raise Exception('Please create .env file with the following content:\n\nGITHUB_TOKEN=')
 
+    github_oaut_token = config('GITHUB_TOKEN')
+
+    g = Github(login_or_token=github_oaut_token)
+
+    remaining, request_limit = g.rate_limiting
+    print("Remaining: %s, Limit: %s" % (remaining, request_limit))
+
+
+    repo = g.get_repo("hodgespodge/github-mining")
+
+    print(repo.clone_url)
+
+    print(searcher.eval_repository(repo))
 
 if __name__ == "__main__":
     main()
