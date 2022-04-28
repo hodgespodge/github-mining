@@ -39,7 +39,9 @@ class repo_evaluator:
         code_targets['equation'] = self.clean_equation(code_targets['equation'])
         code_targets['args'] = self.get_expr_arg_dict(code_targets['equation'])
 
-        print("Code equation: " + str(code_targets['equation']))
+        # print("Code equation: " + str(code_targets['equation']))
+
+        print("Code targets:" + str(code_targets)+"\n")
 
         self.check_args_exist_in_dict(code_targets['args'], code_targets)
 
@@ -54,7 +56,9 @@ class repo_evaluator:
         file_targets['equation'] = self.clean_equation(file_targets['equation'])
         file_targets['args'] = self.get_expr_arg_dict(file_targets['equation'])
 
-        print("File equation: " + str(file_targets['equation']))
+        # print("File equation: " + str(file_targets['equation']))
+
+        print("File targets:" + str(file_targets)+"\n")
 
         self.check_args_exist_in_dict(file_targets['args'], file_targets)
 
@@ -83,7 +87,9 @@ class repo_evaluator:
         dir_targets['equation'] = self.clean_equation(dir_targets['equation'])
         dir_targets['args'] = self.get_expr_arg_dict(dir_targets['equation'])
 
-        print("Dir equation: " + str(dir_targets['equation']))
+        # print("Dir equation: " + str(dir_targets['equation']))
+
+        print("Dir targets:" + str(dir_targets)+"\n")
 
         self.check_args_exist_in_dict(dir_targets['args'], dir_targets)
 
@@ -101,7 +107,19 @@ class repo_evaluator:
                 elif target_type == "file":
                     target = self.__init_file_targets(target)
                 elif target_type == "code":
-                    target = self.__init_code_targets(target)
+
+                    wrapper_file_target = {
+                        "target_type": "file",
+                        "x1": copy.deepcopy(target),
+                        "equation": "x1",
+                    }
+
+                    print("initing file target with dummy wrapper")
+
+                    # TODO: need to add (always true file to wrap code requirement)
+                    # target = self.__init_code_targets(target)
+                    target = self.__init_file_targets(wrapper_file_target)
+
                 else:
                     raise Exception("Target type not recognized: " + target["target_type"])
 
@@ -112,7 +130,9 @@ class repo_evaluator:
         repo_targets['equation'] = self.clean_equation(repo_targets['equation'])
         repo_targets['args'] = self.get_expr_arg_dict(repo_targets['equation'])
 
-        print("Repo equation: " + str(repo_targets['equation']))
+        # print("Repo equation: " + str(repo_targets['equation']))
+
+        print("Repo targets:" + str(repo_targets)+"\n")
 
         self.check_args_exist_in_dict(repo_targets['args'], repo_targets)
 
@@ -128,10 +148,21 @@ class repo_evaluator:
                     raise Exception("Cannot have a repo target inside a repo")
                 elif target_type == "dir":
                     target = self.__init_dir_targets(target)
-                elif target_type == "file":
-                    target = self.__init_file_targets(target)
-                elif target_type == "code":
-                    target = self.__init_code_targets(target)
+                elif target_type == "file" or target_type == "code":
+
+                    wrapper_dir_target = {
+                        "target_type": "dir",
+                        "x1": copy.deepcopy(target),
+                        "equation": "x1",
+                    }
+
+                    print("initing dir target with dummy wrapper")
+                    # TODO: need to add (always true dir to wrap file requirement)
+                    target = self.__init_dir_targets(wrapper_dir_target)
+
+                # elif target_type == "code":
+                #     # TODO: need to add (always true file to wrap code requirement)
+                #     target = self.__init_code_targets(target)
                 else:
                     raise Exception("Target type not recognized: " + target["target_type"])
         
@@ -148,12 +179,20 @@ class repo_evaluator:
 
             if target_type == "repo":
                 targets = self.__init_repo_targets(targets)
-            elif target_type == "dir":
-                targets = self.__init_dir_targets(targets)
-            elif target_type == "file":
-                targets = self.__init_file_targets(targets)
-            elif target_type == "code":
-                targets = self.__init_code_targets(targets)
+            elif target_type == "dir" or target_type == "file" or target_type == "code":
+
+                wrapper_repo_target = {
+                    "target_type": "repo",
+                    "x1": copy.deepcopy(targets),
+                    "equation": "x1",
+                }
+                targets = self.__init_repo_targets(wrapper_repo_target)
+
+                # targets = self.__init_dir_targets(targets)
+            # elif target_type == "file":
+            #     targets = self.__init_file_targets(targets)
+            # elif target_type == "code":
+            #     targets = self.__init_code_targets(targets)
             else:
                 raise Exception("Target type not recognized: " + targets["target_type"])
         else:
@@ -172,8 +211,9 @@ class repo_evaluator:
 
         self.targets = self.__init_targets(self.targets)
 
+        print()
         print("Targets: " + str(self.targets))
-
+        print()
     def evaluate_equation(self, equation: sy.Expr, args: dict):
         print("evaluating equation: " + str(equation))
         print("args: " + str(args))
@@ -200,6 +240,9 @@ class repo_evaluator:
 
         # print(equation_result)
 
+        # loop and eval dir targets. 
+        # If the equation_result returns a bool value at any point, return it
+
         return equation_result
 
 
@@ -214,12 +257,12 @@ class repo_evaluator:
 
         if targets['target_type'] == "repo":
             return self.eval_repo_targets(repo, contents, targets)
-        elif targets['target_type'] == "dir":
-            return self.eval_dir_targets(repo, contents, targets)
-        elif targets['target_type'] == "file":
-            return self.eval_file_targets(repo, contents, targets)
-        elif targets['target_type'] == "code":
-            return self.eval_code_targets(repo, contents, targets)
+        # elif targets['target_type'] == "dir":
+        #     return self.eval_dir_targets(repo, contents, targets)
+        # elif targets['target_type'] == "file":
+        #     return self.eval_file_targets(repo, contents, targets)
+        # elif targets['target_type'] == "code":
+        #     return self.eval_code_targets(repo, contents, targets)
         else:
             raise Exception("Target type not recognized: " + targets["target_type"])
 
@@ -271,7 +314,7 @@ def main():
     from github import Github
     from decouple import config   
 
-    with open('searches.json') as json_file:
+    with open('searches2.json') as json_file:
         searches = json.load(json_file)
 
     searcher = repo_evaluator(searches[0])

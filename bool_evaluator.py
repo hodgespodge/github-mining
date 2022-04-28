@@ -19,8 +19,23 @@ a = sy.parsing.sympy_parser.parse_expr(logic_expression, evaluate=False)
 # conver the expression to disjunctive normal form ()
 a = sy.to_dnf(a, simplify=True)
 
-print(a)
-print(a.subs({'x1': True, 'x2': True, 'x3': True, 'x4': True, 'x5': False, 'x6': False}))
+print("a",a)
+
+result = a.subs({'x1': True, 'x2': True, 'x3': True, 'x5': False}) # can short circuit eval if enough variables allow for it
+
+print(result)
+
+print(type(result))
+
+if type(result) == sy.logic.boolalg.BooleanTrue or type(result) == sy.logic.boolalg.BooleanFalse:
+    print("result is bool")
+    print(result)
+else:
+    print("result is not bool")
+    print(type(result))
+    print(result)
+
+# print("a.subs",a.subs({'x1': True, 'x2': True, 'x6': False}))
 
 # split the disjunctions into a list
 disjunctions = a.args
@@ -35,5 +50,5 @@ with open('searches.json') as json_file:
 
 print(searches)
 
-evaluator = repo_evaluator(searches)
+# evaluator = repo_evaluator(searches)
 
