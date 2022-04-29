@@ -189,16 +189,46 @@ class repo_evaluator:
 
     # TODO Need to rethink how I handle nested directories
     # Also may need to add a variable for defining if recursive search through directories is allowed
+    # this function may end up being a recursive function (for nested directories)
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
+        matching_dirs = set() # need to both recurse and call dir targets as well as file targets.
+
+        unmatching_dirs = set() # need to recurse and call dir targets here
+        
         dir_args = targets['args']
 
         for arg in dir_args:
-            
+
             arg_regex = targets[str(arg)]
 
-            if type(arg_regex) == str:
-                dir_args[arg] = in_regex(arg_regex, contents.get_name())
+            if type(arg_regex) == str: # else it's a file target
+
+                for item in contents:
+                    if item.type == "dir":
+
+                        dir_name_match = in_regex(arg_regex, contents.name)
+
+                        if dir_name_match:
+                            dir_args[arg] = True
+                            matching_dirs.add(contents.name)
+                        else:
+                            dir_args[arg] = False
+
+        equation_result = self.evaluate_equation(targets['equation'], dir_args)
+
+        if equation_result is not None:
+            return equation_result
+
+        
+
+        for arg in dir_args.keys():
+
+            if dir_args[arg] != None:
+                continue
+            # elif type(t)
+
+            
 
 
 
@@ -206,26 +236,24 @@ class repo_evaluator:
 
         repo_args = targets['args']
 
-        for arg in repo_args.keys():
+        for arg in repo_args.keys(): # loop through repo name regexes 
 
             arg_regex = targets[str(arg)]
 
-            if type(arg_regex) == str: # else it's a dict
+            if type(arg_regex) == str: # else it's a dir target
                 repo_args[arg] = in_regex( arg_regex, repo.name)
 
-            equation_result = self.evaluate_equation(targets['equation'], repo_args)
+        equation_result = self.evaluate_equation(targets['equation'], repo_args)
 
-            if equation_result is not None:
-                return equation_result
+        if equation_result is not None:
+            return equation_result
 
-        for arg in repo_args.keys():
+        for arg in repo_args.keys(): # after checking repo names, check dirs
             
             if repo_args[arg] != None:
                 continue
-            elif type(targets[str(arg)]) == dict:
-                repo_args[arg] = self.eval_dir_targets(repo, contents, targets[str(arg)])
             else:
-                raise Exception("An error occured while trying to evaluate repo arg: " + str(arg))
+                repo_args[arg] = self.eval_dir_targets(repo, contents, targets[str(arg)])
 
             equation_result = self.evaluate_equation(targets['equation'], repo_args)
 
