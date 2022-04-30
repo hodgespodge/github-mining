@@ -4,7 +4,7 @@ from github import Repository, ContentFile
 import json
 import sympy as sy
 import copy
-from regex_functions import in_regex, in_regex_list
+from regex_functions import in_regex, in_regex_list, any_string_in_pattern
 
 class repo_evaluator:
 
@@ -188,10 +188,49 @@ class repo_evaluator:
 
     def eval_file_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
         # print("evaling file targets")
-        print("file targets",targets)
-        print("file args", targets['args'] )
+        # print("file targets",targets)
+        # print("file args", targets['args'] )
 
-        print("contents", contents)
+        # print("contents", contents)
+
+        file_args = targets['args']
+
+        file_names = [file.path.split('/')[-1] for file in contents]
+
+        # print(files)
+
+        # file_args = targets['args']
+
+        # for file_name in file_names:
+            
+        for arg in file_args:
+            
+            arg_regex = targets[str(arg)]
+            if type(arg_regex) == str:
+                file_args[arg] = any_string_in_pattern(file_names, arg_regex)
+                    
+        equation_result = self.evaluate_equation(targets['equation'], file_args)
+
+        if equation_result is not None:
+            return equation_result
+
+        for arg in file_args:
+            
+            # need to call target_type code for each non-string arg
+
+            arg_regex = targets[str(arg)]
+
+            if type(arg_regex) == str:
+                continue
+            else:
+                file_args[arg] = self.eval_file_targets(repo, contents, file_args)
+
+            equation_result = self.evaluate_equation(targets['equation'], file_args)
+
+            if equation_result is not None:
+                return equation_result
+
+        return False
 
 
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
@@ -259,7 +298,6 @@ class repo_evaluator:
                         if dir_eval is not None and dir_eval:
                             return True
 
-        
         for dir_name in unmatching_dirs:
             dir_contents = repo.get_contents(dir_name)
             if dir_contents is not None:
@@ -297,7 +335,7 @@ class repo_evaluator:
             if equation_result is not None:
                 return equation_result
 
-        return equation_result
+        return False
 
 
     def eval_repository(self,repo : Repository.Repository):
