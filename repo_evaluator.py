@@ -1,4 +1,4 @@
-from re import A
+# from re import A
 from github import Repository, ContentFile
 
 import json
@@ -11,11 +11,11 @@ class repo_evaluator:
     def get_expr_arg_dict(self, expr : sy.Expr):
 
         def _add_expr_args_to_dict(expr : sy.Expr , unique_args : dict):
-                if len(expr.args) == 0:
-                    unique_args[expr] = None
-                else:
-                    for arg in expr.args:
-                        _add_expr_args_to_dict(arg, unique_args)
+            if len(expr.args) == 0:
+                unique_args[expr] = None
+            else:
+                for arg in expr.args:
+                    _add_expr_args_to_dict(arg, unique_args)
 
         unique_args = {}
         _add_expr_args_to_dict(expr, unique_args)
@@ -186,6 +186,11 @@ class repo_evaluator:
         else:
             return None
 
+    def eval_file_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
+        # print("evaling file targets")
+        print("file targets",targets)
+        print("file args", targets['args'] )
+
 
     # TODO Need to rethink how I handle nested directories
     # Also may need to add a variable for defining if recursive search through directories is allowed
@@ -193,10 +198,13 @@ class repo_evaluator:
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
         matching_dirs = set() # need to both recurse and call dir targets as well as file targets.
-
         unmatching_dirs = set() # need to recurse and call dir targets here
         
         dir_args = targets['args']
+
+        print("dir targets",targets)
+        print("dir args",dir_args)
+
 
         for arg in dir_args:
 
@@ -208,29 +216,52 @@ class repo_evaluator:
                     if item.type == "dir":
 
                         dir_name_match = in_regex(arg_regex, contents.name)
-
+                        
                         if dir_name_match:
                             dir_args[arg] = True
                             matching_dirs.add(contents.name)
                         else:
                             dir_args[arg] = False
-
+                            unmatching_dirs.add(contents.name)
+                        
         equation_result = self.evaluate_equation(targets['equation'], dir_args)
 
         if equation_result is not None:
             return equation_result
 
-        
-
         for arg in dir_args.keys():
 
             if dir_args[arg] != None:
                 continue
-            # elif type(t)
+            else:
+                for dir_name in matching_dirs:
+                    dir_contents = repo.get_contents(dir_name)
 
-            
+                    if dir_contents is not None:
 
+                        file_eval = self.eval_file_targets(repo, dir_contents, targets[str(arg)])
+                        if file_eval is not None and file_eval:
+                            dir_args[arg] = True
 
+                            equation_result = self.evaluate_equation(targets['equation'], dir_args)
+                            if equation_result is not None:
+                                return equation_result
+
+                            break
+
+                        dir_eval = self.eval_dir_targets(repo, dir_contents, targets[str(arg)])
+                        if dir_eval is not None and dir_eval:
+                            return True
+
+        
+        for dir_name in unmatching_dirs:
+            dir_contents = repo.get_contents(dir_name)
+            if dir_contents is not None:
+                dir_eval = self.eval_dir_targets(repo, dir_contents, targets)
+                if dir_eval is not None and dir_eval:
+                    return True
+                
+        return False
 
     def eval_repo_targets(self, repo : Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
