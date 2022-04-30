@@ -15,8 +15,8 @@
             "x2" : {
 
                 "target_type" : "dir",
-                "x1": ".*test",
-                "x2": ".*tests",
+                "x1": ".*tests",
+                "x2": ".*test",
                 "x3": {
                     
                     "target_type" : "file",

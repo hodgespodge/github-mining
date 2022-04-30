@@ -191,10 +191,9 @@ class repo_evaluator:
         print("file targets",targets)
         print("file args", targets['args'] )
 
+        print("contents", contents)
 
-    # TODO Need to rethink how I handle nested directories
-    # Also may need to add a variable for defining if recursive search through directories is allowed
-    # this function may end up being a recursive function (for nested directories)
+
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
         matching_dirs = set() # need to both recurse and call dir targets as well as file targets.
@@ -202,8 +201,8 @@ class repo_evaluator:
         
         dir_args = targets['args']
 
-        print("dir targets",targets)
-        print("dir args",dir_args)
+        # print("dir targets",targets)
+        # print("dir args",dir_args)
 
 
         for arg in dir_args:
@@ -215,19 +214,26 @@ class repo_evaluator:
                 for item in contents:
                     if item.type == "dir":
 
-                        dir_name_match = in_regex(arg_regex, contents.name)
+                        dir_name_match = in_regex(arg_regex, item.name)
                         
                         if dir_name_match:
                             dir_args[arg] = True
-                            matching_dirs.add(contents.name)
+                            matching_dirs.add(item.name)
                         else:
                             dir_args[arg] = False
-                            unmatching_dirs.add(contents.name)
+                            unmatching_dirs.add(item.name)
                         
         equation_result = self.evaluate_equation(targets['equation'], dir_args)
 
+        # print("equation_result",equation_result)
+
         if equation_result is not None:
             return equation_result
+
+        # print("matching dirs", matching_dirs)
+        # print("unmatching dirs", unmatching_dirs)
+
+        # print("dir_args:", dir_args)
 
         for arg in dir_args.keys():
 
@@ -244,12 +250,12 @@ class repo_evaluator:
                             dir_args[arg] = True
 
                             equation_result = self.evaluate_equation(targets['equation'], dir_args)
-                            if equation_result is not None:
-                                return equation_result
+                            if equation_result is not None: # equation can be decided before all files are evaluated
+                                return equation_result 
 
-                            break
+                            # break
 
-                        dir_eval = self.eval_dir_targets(repo, dir_contents, targets[str(arg)])
+                        dir_eval = self.eval_dir_targets(repo, dir_contents, targets) # recurse in subdir
                         if dir_eval is not None and dir_eval:
                             return True
 
@@ -257,7 +263,7 @@ class repo_evaluator:
         for dir_name in unmatching_dirs:
             dir_contents = repo.get_contents(dir_name)
             if dir_contents is not None:
-                dir_eval = self.eval_dir_targets(repo, dir_contents, targets)
+                dir_eval = self.eval_dir_targets(repo, dir_contents, targets) # recurse in subdir
                 if dir_eval is not None and dir_eval:
                     return True
                 
