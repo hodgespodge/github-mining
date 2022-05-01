@@ -1,10 +1,9 @@
-# from re import A
 from github import Repository, ContentFile
 
 import json
 import sympy as sy
 import copy
-from regex_functions import in_regex, in_regex_list, any_string_in_pattern
+from src.regex_functions import in_regex, in_regex_list, any_string_in_pattern
 
 class repo_evaluator:
 
@@ -210,7 +209,6 @@ class repo_evaluator:
                 equation_result = self.evaluate_equation(targets['equation'], code_args)
 
                 if equation_result is not None:
-                    print("returning result: " + str(equation_result))
                     return equation_result
 
         return False
@@ -410,7 +408,7 @@ def main():
     from github import Github
     from decouple import config   
 
-    with open('searches2.json') as json_file:
+    with open('searches.json') as json_file:
         searches = json.load(json_file)
 
     searcher = repo_evaluator(searches[0])

@@ -1,0 +1,15 @@
+[
+    {
+        "name" : "empty test",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {
+
+        }    
+        ,
+        "max_file_size" : 100000
+    }
+]
