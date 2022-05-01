@@ -84,8 +84,10 @@ class repo_evaluator:
 
                 if target_type == None:
                     raise Exception("Target must have a 'target_type' key")
-                elif target_type == "repo" or target_type == "dir":
+                elif target_type == "repo":
                     raise Exception("Cannot have a " + target_type + "target inside a dir")
+                elif target_type == "dir":
+                    raise Exception("Cannot have a dir target inside a dir... Multiple levels of dir targets are partially supported via the \' \"recursive\" : true\' arg")
                 elif target_type == "file":
                     dir_targets[str(arg)] = self.__init_file_targets(target)
                 elif target_type == "code":
@@ -175,6 +177,7 @@ class repo_evaluator:
             return
 
         self.targets = self.__init_targets(self.targets)
+        print(self.targets)
 
     def evaluate_equation(self, equation: sy.Expr, args: dict):
         
@@ -186,51 +189,91 @@ class repo_evaluator:
         else:
             return None
 
+    def eval_code_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
+
+        code = str(contents.decoded_content.decode('utf-8', 'ignore'))        
+
+        code_args = targets['args']
+
+        equation_result = self.evaluate_equation(targets['equation'], code_args)
+
+        if equation_result is not None:
+            return equation_result
+
+        for arg in code_args:
+
+            arg_regex = targets[str(arg)]
+
+            if in_regex(arg_regex, code):
+                code_args[arg] = True
+
+                equation_result = self.evaluate_equation(targets['equation'], code_args)
+
+                if equation_result is not None:
+                    print("returning result: " + str(equation_result))
+                    return equation_result
+
+        return False
+
     def eval_file_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
-        # print("evaling file targets")
-        # print("file targets",targets)
-        # print("file args", targets['args'] )
-
-        # print("contents", contents)
-
+        
         file_args = targets['args']
+        matching_files = set()    
 
-        file_names = [file.path.split('/')[-1] for file in contents]
+        accept_any_file = True
 
-        # print(files)
-
-        # file_args = targets['args']
-
-        # for file_name in file_names:
-            
         for arg in file_args:
             
             arg_regex = targets[str(arg)]
             if type(arg_regex) == str:
-                file_args[arg] = any_string_in_pattern(file_names, arg_regex)
-                    
+
+                accept_any_file = False
+
+                for file in contents:
+                    file_name = file.path.split('/')[-1]
+
+                    if in_regex(arg_regex, file_name):
+                        matching_files.add(file)
+                        file_args[arg] = True
+  
+        for arg in file_args:
+
+            # if file name wasn't found, then set to false
+            if type(targets[str(arg)]) == str and file_args[arg] == None: 
+                file_args[arg] = False
+
         equation_result = self.evaluate_equation(targets['equation'], file_args)
 
         if equation_result is not None:
             return equation_result
 
+        if accept_any_file:
+            for file in contents:
+                matching_files.add(file)
+
         for arg in file_args:
-            
-            # need to call target_type code for each non-string arg
 
             arg_regex = targets[str(arg)]
 
             if type(arg_regex) == str:
                 continue
             else:
-                file_args[arg] = self.eval_file_targets(repo, contents, file_args)
 
-            equation_result = self.evaluate_equation(targets['equation'], file_args)
+                for file in matching_files:
 
-            if equation_result is not None:
-                return equation_result
+                    if self.eval_code_targets(repo, file, targets[str(arg)]):
+                        file_args[arg] = True
+                        break
 
-        return False
+                if file_args[arg] != True:
+                    file_args[arg] = False
+
+                equation_result = self.evaluate_equation(targets['equation'], file_args)
+
+                if equation_result is not None:
+                    return equation_result
+
+        return self.evaluate_equation(targets['equation'], file_args)
 
 
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
@@ -238,17 +281,21 @@ class repo_evaluator:
         matching_dirs = set() # need to both recurse and call dir targets as well as file targets.
         unmatching_dirs = set() # need to recurse and call dir targets here
         
+        targets_copy = copy.deepcopy(targets)
+
+        recursive = targets.get('recursive', False)
+
         dir_args = targets['args']
 
-        # print("dir targets",targets)
-        # print("dir args",dir_args)
-
+        accept_any_dir = True
 
         for arg in dir_args:
 
             arg_regex = targets[str(arg)]
 
             if type(arg_regex) == str: # else it's a file target
+
+                accept_any_dir = False
 
                 for item in contents:
                     if item.type == "dir":
@@ -258,21 +305,33 @@ class repo_evaluator:
                         if dir_name_match:
                             dir_args[arg] = True
                             matching_dirs.add(item.name)
+                            # if recursive, then dir name discovery is passed to recursive call
+                            if recursive: 
+                                targets_copy['args'][arg] = True
+                                
                         else:
-                            dir_args[arg] = False
+                            if dir_args[arg] != True:
+                                dir_args[arg] = False
                             unmatching_dirs.add(item.name)
-                        
-        equation_result = self.evaluate_equation(targets['equation'], dir_args)
 
-        # print("equation_result",equation_result)
+        if accept_any_dir:
+            for item in contents:
+                if item.type == "dir":
+                    matching_dirs.add(item.name)
+
+        equation_result = self.evaluate_equation(targets['equation'], dir_args)
 
         if equation_result is not None:
             return equation_result
 
-        # print("matching dirs", matching_dirs)
-        # print("unmatching dirs", unmatching_dirs)
+        all_dirs = matching_dirs.union(unmatching_dirs)
 
-        # print("dir_args:", dir_args)
+        for dir_name in all_dirs: # Recurse through all directories
+            dir_contents = repo.get_contents(dir_name)
+            if dir_contents is not None:
+                dir_eval = self.eval_dir_targets(repo, dir_contents, copy.deepcopy(targets_copy)) # recurse in subdir
+                if dir_eval == True:
+                    return True
 
         for arg in dir_args.keys():
 
@@ -285,27 +344,20 @@ class repo_evaluator:
                     if dir_contents is not None:
 
                         file_eval = self.eval_file_targets(repo, dir_contents, targets[str(arg)])
-                        if file_eval is not None and file_eval:
+
+                        if file_eval == True:
                             dir_args[arg] = True
 
                             equation_result = self.evaluate_equation(targets['equation'], dir_args)
+
                             if equation_result is not None: # equation can be decided before all files are evaluated
                                 return equation_result 
 
-                            # break
+                if dir_args[arg] == None: # pattern not found in this dir
+                    dir_args[arg] = False
 
-                        dir_eval = self.eval_dir_targets(repo, dir_contents, targets) # recurse in subdir
-                        if dir_eval is not None and dir_eval:
-                            return True
-
-        for dir_name in unmatching_dirs:
-            dir_contents = repo.get_contents(dir_name)
-            if dir_contents is not None:
-                dir_eval = self.eval_dir_targets(repo, dir_contents, targets) # recurse in subdir
-                if dir_eval is not None and dir_eval:
-                    return True
-                
-        return False
+        return self.evaluate_equation(targets['equation'], dir_args)
+        # return False
 
     def eval_repo_targets(self, repo : Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
@@ -337,7 +389,6 @@ class repo_evaluator:
 
         return False
 
-
     def eval_repository(self,repo : Repository.Repository):
 
         if self.targets == None: # no target specified
@@ -359,7 +410,7 @@ def main():
     from github import Github
     from decouple import config   
 
-    with open('searches.json') as json_file:
+    with open('searches2.json') as json_file:
         searches = json.load(json_file)
 
     searcher = repo_evaluator(searches[0])

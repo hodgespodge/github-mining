@@ -11,19 +11,14 @@
 
         "targets" : {
                 
-            "target_type" : "file",
-            "x1" : "CMakeLists.txt",
-            "x2" : ".*.py",
-            "x3" : {
+            
                 
                 "target_type" : "code",
                 "x1" : "import py_trees",
                 "x2" : "from py_trees",
                 "equation" : "x1 or x2"
                  
-            },
-
-            "equation" : "(x1 or x2) and x3"
+            
                 
         }
     

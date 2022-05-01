@@ -17,6 +17,7 @@
                 "target_type" : "dir",
                 "x1": ".*tests",
                 "x2": ".*test",
+                "recursive" : true,
                 "x3": {
                     
                     "target_type" : "file",
@@ -27,7 +28,7 @@
                         "target_type" : "code",
                         "x1" : "import py_trees",
                         "x2" : "from py_trees",
-                        "equation" : "x1 or x2"
+                        "equation" : "~x1 or x2"
                     
                     },
 
