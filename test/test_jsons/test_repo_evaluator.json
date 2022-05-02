@@ -22,4 +22,61 @@
         ,
         "max_file_size" : 100000
     }
+    ,
+    {
+        "name" : "repo target init",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {"target_type" : "repo",
+            "x1" : ".*",
+            "equation" : "x1 "
+        }    
+        ,
+        "max_file_size" : 100000
+    }
+    ,
+    {
+        "name" : "dir target init",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {"target_type" : "dir",
+            "x1" : ".*",
+            "equation" : "x1 "
+        }
+    }
+    ,
+    {
+        "name" : "file target init",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {"target_type" : "file",
+            "x1" : ".*",
+            "equation" : "x1 "
+        }
+    }
+    ,
+    {
+        "name" : "code target init",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {"target_type" : "code",
+            "x1" : ".*",
+            "equation" : "x1 "
+        }
+    }
+
+
+
 ]

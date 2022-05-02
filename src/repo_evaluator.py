@@ -172,7 +172,7 @@ class repo_evaluator:
         self.targets = self.search_dict.get('targets')
         self.max_file_size = self.search_dict.get('max_file_size', 1000000)
 
-        # Dummy accept all target if none provided
+        # Dummy "accept all" target if none provided
         if self.targets is None or len(self.targets) == 0:
             self.targets = {
             "target_type":"repo",
