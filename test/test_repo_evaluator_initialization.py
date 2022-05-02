@@ -50,14 +50,14 @@ class TestRepoEvaluator(unittest.TestCase):
             }
         }
 
-    def get_searches(self, repo_name):
-        json_folder = "test/test_jsons"
-        with open(json_folder + "/"+ repo_name + ".json" ) as json_file:
+    def get_searches(self):
+        json_path = "test/test_jsons/test_repo_evaluator_initialization.json"
+        with open(json_path) as json_file:
             return json.load(json_file)
 
     def test_empty_targets(self):
 
-        searches = self.get_searches("test_repo_evaluator")
+        searches = self.get_searches()
     
         no_targets_evaluator = repo_evaluator(searches[0])
         self.assertEqual(no_targets_evaluator.search_name, "no targets")
@@ -70,7 +70,7 @@ class TestRepoEvaluator(unittest.TestCase):
 
     def test_repo_target_initialization(self):
 
-        searches = self.get_searches("test_repo_evaluator")
+        searches = self.get_searches()
 
         repo_target_evaluator = repo_evaluator(searches[2])
         self.assertEqual(repo_target_evaluator.search_name, "repo target init")
@@ -81,7 +81,7 @@ class TestRepoEvaluator(unittest.TestCase):
 
     def test_dir_target_initialization(self):
 
-        searches = self.get_searches("test_repo_evaluator")
+        searches = self.get_searches()
 
         dir_target_evaluator = repo_evaluator(searches[3])
         self.assertEqual(dir_target_evaluator.search_name, "dir target init")
@@ -92,7 +92,7 @@ class TestRepoEvaluator(unittest.TestCase):
 
     def test_file_target_initialization(self):
 
-        searches = self.get_searches("test_repo_evaluator")
+        searches = self.get_searches()
 
         file_target_evaluator = repo_evaluator(searches[4])
         self.assertEqual(file_target_evaluator.search_name, "file target init")
@@ -103,7 +103,7 @@ class TestRepoEvaluator(unittest.TestCase):
 
     def test_code_target_initialization(self):
 
-        searches = self.get_searches("test_repo_evaluator")
+        searches = self.get_searches()
 
         code_target_evaluator = repo_evaluator(searches[5])
         self.assertEqual(code_target_evaluator.search_name, "code target init")
