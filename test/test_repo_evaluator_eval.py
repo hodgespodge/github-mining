@@ -15,7 +15,7 @@ def searches():
 
 @pytest.fixture(scope="module")
 def g():
-    return authenticate(print_rate_limit=True)
+    return authenticate()
 
 @pytest.mark.order(1)
 def test_authenticate(g):

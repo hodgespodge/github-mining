@@ -2,18 +2,12 @@ from github import Github
 import os
 from decouple import config  
 
+def authenticate(github_token=None):
 
-def authenticate(print_rate_limit=False):
+    if type(github_token) != str:
+        if not os.path.exists('.env'):
+            raise Exception('Please create .env file with the following content:\n\nGITHUB_TOKEN=')
 
-    if not os.path.exists('.env'):
-        raise Exception('Please create .env file with the following content:\n\nGITHUB_TOKEN=')
+        github_token = config('GITHUB_TOKEN')
 
-    github_oaut_token = config('GITHUB_TOKEN')
-    g = Github(login_or_token=github_oaut_token)
-
-    if print_rate_limit:
-        remaining, request_limit = g.rate_limiting
-        print("Remaining: %s, Limit: %s" % (remaining, request_limit))
-
-    return g
-
+    return Github(login_or_token=github_token)

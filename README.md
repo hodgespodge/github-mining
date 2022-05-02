@@ -12,5 +12,3 @@
 
 ### Usage
 
-TODO: is it worth trying to encode boolean login into the search?
-I.E. target A AND target B OR target C

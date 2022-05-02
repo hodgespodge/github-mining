@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This is an old version of the script, kept for reference.
+
 from github import Github       #pip3 install pyGithub
 from decouple import config     #pip3 install python-decouple
 from time import sleep
