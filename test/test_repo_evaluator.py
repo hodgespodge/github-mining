@@ -3,15 +3,33 @@ import unittest
 from src.repo_evaluator import repo_evaluator
 import json
 
+from sympy import Symbol
+
 class TestRepoEvaluator(unittest.TestCase):
-    def test_repo_evaluator(self):
+
+    def test_empty_targets(self):
+
         searches = None
-        with open('test/test_searches.json') as json_file:
+
+        json_folder = "test/test_jsons/"
+        with open(json_folder + "test_repo_evaluator.json" ) as json_file:
             searches = json.load(json_file)
             
-        evaluator = repo_evaluator(searches[0])
+        no_targets_evaluator = repo_evaluator(searches[0])
+        self.assertEqual(no_targets_evaluator.search_name, "no targets")
 
-        print(evaluator.search_description)
+        empty_targets_evaluator = repo_evaluator(searches[1])
+        self.assertEqual(empty_targets_evaluator.search_name, "empty targets")
 
-        # self.assertEqual(evaluator.search_description, True)
+        default_target = {
+            "target_type":"repo",
+             "x1":".*",
+             "equation":Symbol("x1"),
+             "args":{
+                 Symbol("x1"):None
+                }
+             }
+
+        self.assertEqual(empty_targets_evaluator.targets, default_target)
+        self.assertEqual(no_targets_evaluator.targets, default_target)
         

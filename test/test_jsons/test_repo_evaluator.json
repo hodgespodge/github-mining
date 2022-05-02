@@ -1,0 +1,25 @@
+[
+    {
+        "name" : "no targets",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ]  
+        ,
+        "max_file_size" : 100000
+    }
+    ,
+    {
+        "name" : "empty targets",
+        "keywords": [
+        ],
+        "qualifiers":[
+        ],
+
+        "targets" : {
+
+        }    
+        ,
+        "max_file_size" : 100000
+    }
+]

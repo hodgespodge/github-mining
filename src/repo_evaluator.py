@@ -166,17 +166,23 @@ class repo_evaluator:
 
         return targets
 
-    def __init__(self, search_description : dict):
-        self.search_description = search_description
+    def __init__(self, search_dict : dict):
+        self.search_dict = search_dict
 
-        self.targets = self.search_description.get('targets')
-        self.max_file_size = self.search_description.get('max_file_size', 1000000)
+        self.targets = self.search_dict.get('targets')
+        self.max_file_size = self.search_dict.get('max_file_size', 1000000)
 
-        if self.targets is None:
-            return
+        # Dummy accept all target if none provided
+        if self.targets is None or len(self.targets) == 0:
+            self.targets = {
+            "target_type":"repo",
+             "x1":".*",
+             "equation":"x1"
+             }
+            
+        self.search_name = self.search_dict.get('name', "")
 
         self.targets = self.__init_targets(self.targets)
-        print(self.targets)
 
     def evaluate_equation(self, equation: sy.Expr, args: dict):
         
