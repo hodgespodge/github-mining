@@ -31,11 +31,11 @@
                     "equation" : "x1"
                 },
             "x2" : 
-            {
-                "target_type" : "dir",
-                "x1" : "target",
-                "equation" : "x1"
-            },  
+                {
+                    "target_type" : "dir",
+                    "x1" : "target",
+                    "equation" : "x1"
+                },  
             "equation" : "x1 and x2"
         }   
         ,  
