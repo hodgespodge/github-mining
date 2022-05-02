@@ -2,7 +2,6 @@ import pytest
 
 from src.repo_evaluator import repo_evaluator
 import json
-import copy
 
 from sympy import Symbol
 

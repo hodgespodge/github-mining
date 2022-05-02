@@ -2,7 +2,7 @@ from github import Github
 import os
 from decouple import config  
 
-def authenticate(github_token=None):
+def authenticate(github_token=None) -> Github:
 
     if type(github_token) != str:
         if not os.path.exists('.env'):
