@@ -6,10 +6,10 @@ import copy
 
 from sympy import Symbol
 
-class TestRepoEvaluator(unittest.TestCase):
+class TestRepoEvaluatorInitialization(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(TestRepoEvaluator, self).__init__(*args, **kwargs)
+        super(TestRepoEvaluatorInitialization, self).__init__(*args, **kwargs)
 
         self.DEFAULT_REPO_TARGET = {
             "target_type":"repo",
