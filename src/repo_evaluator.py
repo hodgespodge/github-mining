@@ -279,7 +279,8 @@ class repo_evaluator:
 
         return self.evaluate_equation(targets['equation'], file_args)
 
-
+    # test_eval_dir_name returns false for dir named "target"
+    # TODO: need to debug this
     def eval_dir_targets(self, repo: Repository.Repository, contents : ContentFile.ContentFile, targets : dict):
 
         matching_dirs = set() # need to both recurse and call dir targets as well as file targets.
