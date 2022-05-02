@@ -1,4 +1,4 @@
-import unittest
+import pytest
 
 from src.repo_evaluator import repo_evaluator
 import json
@@ -6,108 +6,96 @@ import copy
 
 from sympy import Symbol
 
-class TestRepoEvaluatorInitialization(unittest.TestCase):
 
-    def __init__(self, *args, **kwargs):
-        super(TestRepoEvaluatorInitialization, self).__init__(*args, **kwargs)
+@pytest.fixture(scope="module")
+def searches():
+    json_path = "test/test_jsons/test_repo_evaluator_initialization.json"
+    with open(json_path) as json_file:
+        return json.load(json_file)
 
-        self.DEFAULT_REPO_TARGET = {
-            "target_type":"repo",
-             "x1":".*",
-             "equation":Symbol("x1"),
-             "args":{
-                 Symbol("x1"):None
-                }
-             }
+@pytest.fixture(scope="module")
+def default_repo_target():
+    return {
+        "target_type":"repo",
+        "x1":".*",
+        "equation":Symbol("x1"),
+        "args":{
+            Symbol("x1"):None
+        }
+    }
 
-        self.DIR_TARGET = copy.deepcopy(self.DEFAULT_REPO_TARGET)
-        self.DIR_TARGET["x1"] = {
-            "target_type":"dir",
-            "x1":".*",
-            "equation":Symbol("x1"),
-            "args":{
-                Symbol("x1"):None
+@pytest.fixture(scope="module")
+def dir_target(default_repo_target):
+    default_repo_target["x1"] = {
+        "target_type":"dir",
+        "x1":".*",
+        "equation":Symbol("x1"),
+        "args":{
+            Symbol("x1"):None
             }
         }
+    return default_repo_target
 
-        self.FILE_TARGET = copy.deepcopy(self.DIR_TARGET)
-        self.FILE_TARGET["x1"]["x1"] = {
-            "target_type":"file",
-            "x1":".*",
-            "equation":Symbol("x1"),
-            "args":{
-                Symbol("x1"):None
+@pytest.fixture(scope="module")
+def file_target(dir_target):
+    dir_target["x1"]["x1"] = {
+        "target_type":"file",
+        "x1":".*",
+        "equation":Symbol("x1"),
+        "args":{
+            Symbol("x1"):None
             }
         }
+    return dir_target
 
-        self.CODE_TARGET = copy.deepcopy(self.FILE_TARGET)
-        self.CODE_TARGET["x1"]["x1"]["x1"] = {
-            "target_type":"code",
-            "x1":".*",
-            "equation":Symbol("x1"),
-            "args":{
-                Symbol("x1"):None
+@pytest.fixture(scope="module")
+def code_target(file_target):
+    file_target["x1"]["x1"]["x1"] = {
+        "target_type":"code",
+        "x1":".*",
+        "equation":Symbol("x1"),
+        "args":{
+            Symbol("x1"):None
             }
         }
+    return file_target
 
-    def get_searches(self):
-        json_path = "test/test_jsons/test_repo_evaluator_initialization.json"
-        with open(json_path) as json_file:
-            return json.load(json_file)
+def test_empty_targets(searches, default_repo_target):
 
-    def test_empty_targets(self):
+    no_targets_evaluator = repo_evaluator(searches[0])
+    assert no_targets_evaluator.search_name == "no targets"
 
-        searches = self.get_searches()
-    
-        no_targets_evaluator = repo_evaluator(searches[0])
-        self.assertEqual(no_targets_evaluator.search_name, "no targets")
+    empty_targets_evaluator = repo_evaluator(searches[1])
+    assert empty_targets_evaluator.search_name == "empty targets"
 
-        empty_targets_evaluator = repo_evaluator(searches[1])
-        self.assertEqual(empty_targets_evaluator.search_name, "empty targets")
+    assert empty_targets_evaluator.targets == default_repo_target
+    assert no_targets_evaluator.targets == default_repo_target
 
-        self.assertEqual(empty_targets_evaluator.targets, self.DEFAULT_REPO_TARGET)
-        self.assertEqual(no_targets_evaluator.targets, self.DEFAULT_REPO_TARGET)
+def test_repo_target_initialization(searches, default_repo_target):
 
-    def test_repo_target_initialization(self):
+    repo_target_evaluator = repo_evaluator(searches[2])
+    assert repo_target_evaluator.search_name == "repo target init"
 
-        searches = self.get_searches()
+    repo_target = default_repo_target
+    assert repo_target_evaluator.targets == repo_target
 
-        repo_target_evaluator = repo_evaluator(searches[2])
-        self.assertEqual(repo_target_evaluator.search_name, "repo target init")
+def test_dir_target_initialization(searches, dir_target):
 
-        repo_target = self.DEFAULT_REPO_TARGET
+    dir_target_evaluator = repo_evaluator(searches[3])
 
-        self.assertEqual(repo_target_evaluator.targets, repo_target)
+    assert dir_target_evaluator.search_name == "dir target init"
+    assert dir_target_evaluator.targets == dir_target
 
-    def test_dir_target_initialization(self):
+def test_file_target_initialization(searches, file_target):
 
-        searches = self.get_searches()
+    file_target_evaluator = repo_evaluator(searches[4])
 
-        dir_target_evaluator = repo_evaluator(searches[3])
-        self.assertEqual(dir_target_evaluator.search_name, "dir target init")
+    assert file_target_evaluator.search_name == "file target init"
+    assert file_target_evaluator.targets == file_target
 
-        dir_target = self.DIR_TARGET
+def test_code_target_initialization(searches, code_target):
 
-        self.assertEqual(dir_target_evaluator.targets, dir_target)
+    code_target_evaluator = repo_evaluator(searches[5])
 
-    def test_file_target_initialization(self):
-
-        searches = self.get_searches()
-
-        file_target_evaluator = repo_evaluator(searches[4])
-        self.assertEqual(file_target_evaluator.search_name, "file target init")
-
-        file_target = self.FILE_TARGET
-
-        self.assertEqual(file_target_evaluator.targets, file_target)
-
-    def test_code_target_initialization(self):
-
-        searches = self.get_searches()
-
-        code_target_evaluator = repo_evaluator(searches[5])
-        self.assertEqual(code_target_evaluator.search_name, "code target init")
-
-        code_target = self.CODE_TARGET
-
-        self.assertEqual(code_target_evaluator.targets, code_target)
+    assert code_target_evaluator.search_name == "code target init"
+    assert code_target_evaluator.targets == code_target

@@ -2,3 +2,4 @@ python-decouple
 pyGithub
 sympy
 pytest
+pytest-order
